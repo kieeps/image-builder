@@ -1,0 +1,53 @@
+{
+  "_comment": "Single source of MCP servers for Claude Code and Codex. toolbox-mcp-sync writes these into ~/.claude.json and ~/.codex/config.toml at every start; servers you add yourself under other names are left alone. `env` lists the variable NAMES a server needs; the values come from the cluster (see /etc/profile.d/toolbox-env.sh).",
+  "servers": {
+    "filesystem": {
+      "command": "mcp-server-filesystem",
+      "args": ["/home/kieeps", "/workspace", "/host-share", "/host-nixos"]
+    },
+    "kubernetes": {
+      "command": "npx",
+      "args": ["-y", "kubernetes-mcp-server@latest", "--config", "/etc/toolbox/kubernetes-mcp-server.toml"],
+      "env": ["KUBECONFIG"]
+    },
+    "grafana": {
+      "command": "uvx",
+      "args": ["mcp-grafana", "--disable-write"],
+      "env": ["GRAFANA_URL", "GRAFANA_USERNAME", "GRAFANA_PASSWORD"]
+    },
+    "homeassistant": {
+      "command": "uvx",
+      "args": ["--python", "3.13", "ha-mcp@latest"],
+      "env": ["HOMEASSISTANT_URL", "HOMEASSISTANT_TOKEN"]
+    },
+    "nextcloud": {
+      "command": "uvx",
+      "args": ["--from", "nextcloud-mcp-server", "nextcloud-mcp-server", "run", "--transport", "stdio"],
+      "env": ["NEXTCLOUD_HOST", "NEXTCLOUD_USERNAME", "NEXTCLOUD_PASSWORD"]
+    },
+    "unifi": {
+      "command": "uvx",
+      "args": ["--from", "unifi-network-mcp", "unifi-network-mcp"],
+      "env": [
+        "UNIFI_HOST", "UNIFI_PORT", "UNIFI_USERNAME", "UNIFI_PASSWORD", "UNIFI_API_KEY",
+        "UNIFI_SITE", "UNIFI_VERIFY_SSL", "UNIFI_CONTROLLER_TYPE",
+        "UNIFI_NETWORK_HOST", "UNIFI_NETWORK_PORT", "UNIFI_NETWORK_USERNAME",
+        "UNIFI_NETWORK_PASSWORD", "UNIFI_NETWORK_SITE", "UNIFI_NETWORK_VERIFY_SSL"
+      ]
+    },
+    "firefly-iii": {
+      "command": "npx",
+      "args": ["-y", "@firefly-iii-mcp/local", "--preset", "default"],
+      "env": ["FIREFLY_III_BASE_URL", "FIREFLY_III_PAT"]
+    },
+    "jcodemunch": { "command": "uvx", "args": ["jcodemunch-mcp"] },
+    "jdocmunch": { "command": "uvx", "args": ["jdocmunch-mcp"] },
+    "jdatamunch": { "command": "uvx", "args": ["jdatamunch-mcp"] },
+    "github": {
+      "url": "https://api.githubcopilot.com/mcp/",
+      "bearer_env": "GITHUB_PAT_TOKEN"
+    },
+    "context7": { "url": "https://mcp.context7.com/mcp" },
+    "paypal": { "url": "https://mcp.paypal.com/mcp" }
+  }
+}

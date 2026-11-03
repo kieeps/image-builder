@@ -1,0 +1,77 @@
+#!/usr/bin/python3
+"""Write the managed MCP servers (/etc/toolbox/mcp-servers.json) into the
+Claude Code and Codex user configs. Only entries named in that file are
+replaced; anything else in either config is kept as-is.
+
+Run by toolbox-entrypoint at start; safe to re-run by hand.
+"""
+import json
+import os
+import pwd
+import sys
+from pathlib import Path
+
+import tomlkit
+
+SOURCE = Path("/etc/toolbox/mcp-servers.json")
+
+
+def claude_entry(spec):
+    if "url" in spec:
+        entry = {"type": "http", "url": spec["url"]}
+        if "bearer_env" in spec:
+            entry["headers"] = {"Authorization": f"Bearer ${{{spec['bearer_env']}:-}}"}
+        return entry
+    entry = {"type": "stdio", "command": spec["command"], "args": spec.get("args", [])}
+    if spec.get("env"):
+        entry["env"] = {name: f"${{{name}:-}}" for name in spec["env"]}
+    return entry
+
+
+def codex_entry(spec):
+    table = tomlkit.table()
+    if "url" in spec:
+        table["url"] = spec["url"]
+        if "bearer_env" in spec:
+            table["bearer_token_env_var"] = spec["bearer_env"]
+        return table
+    table["command"] = spec["command"]
+    if spec.get("args"):
+        table["args"] = spec["args"]
+    if spec.get("env"):
+        table["env_vars"] = spec["env"]
+    return table
+
+
+def write_atomic(path, text, uid, gid):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(text)
+    os.chmod(tmp, 0o600)
+    os.chown(tmp, uid, gid)
+    tmp.replace(path)
+
+
+def main():
+    user = pwd.getpwnam(sys.argv[1] if len(sys.argv) > 1 else "kieeps")
+    home = Path(user.pw_dir)
+    servers = json.loads(SOURCE.read_text())["servers"]
+
+    claude_path = home / ".claude.json"
+    claude = json.loads(claude_path.read_text()) if claude_path.exists() else {}
+    claude.setdefault("mcpServers", {}).update({n: claude_entry(s) for n, s in servers.items()})
+    write_atomic(claude_path, json.dumps(claude, indent=2) + "\n", user.pw_uid, user.pw_gid)
+
+    codex_path = home / ".codex" / "config.toml"
+    codex = tomlkit.parse(codex_path.read_text()) if codex_path.exists() else tomlkit.document()
+    if "mcp_servers" not in codex:
+        codex["mcp_servers"] = tomlkit.table(is_super_table=True)
+    for name, spec in servers.items():
+        codex["mcp_servers"][name] = codex_entry(spec)
+    write_atomic(codex_path, tomlkit.dumps(codex), user.pw_uid, user.pw_gid)
+
+    print(f"toolbox-mcp-sync: {len(servers)} servers -> {claude_path}, {codex_path}")
+
+
+if __name__ == "__main__":
+    main()

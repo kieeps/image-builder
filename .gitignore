@@ -1,0 +1,14 @@
+# Never commit credentials or local state.
+.env
+.env.*
+*.har
+*.pem
+*.key
+kubeconfig*
+# ...except the credential-free in-cluster kubeconfig shipped in an image.
+!images/*/rootfs/etc/*/kubeconfig
+*_pat
+*.log
+tmp/
+__pycache__/
+*.pyc

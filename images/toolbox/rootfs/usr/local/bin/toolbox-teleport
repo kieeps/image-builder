@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# Join the toolbox to Teleport as an SSH node. Started by toolbox-entrypoint when
+# TELEPORT_PROXY_SERVER is set. The join token is only needed for the very first
+# join; after that the identity in /var/lib/toolbox/teleport is reused.
+set -euo pipefail
+
+DATA_DIR=/var/lib/toolbox/teleport
+TOKEN_FILE=/run/toolbox/teleport/auth-token
+CONFIG_FILE=/run/toolbox/teleport.yaml
+
+mkdir -p "$DATA_DIR"
+token=""
+[ -r "$TOKEN_FILE" ] && token="$(tr -d '\n' <"$TOKEN_FILE")"
+if [ -z "$token" ] && [ ! -e "$DATA_DIR/host_uuid" ]; then
+  echo "toolbox-teleport: no join token at $TOKEN_FILE and no existing identity in $DATA_DIR" >&2
+  exit 1
+fi
+
+umask 077
+cat >"$CONFIG_FILE" <<EOF
+version: v3
+teleport:
+  nodename: ${TELEPORT_NODE_NAME:-$HOSTNAME}
+  data_dir: ${DATA_DIR}
+  proxy_server: ${TELEPORT_PROXY_SERVER}
+${token:+  auth_token: ${token}}
+auth_service:
+  enabled: false
+proxy_service:
+  enabled: false
+ssh_service:
+  enabled: true
+  labels:
+    source: k3s
+    cluster: obelix
+    workload: toolbox
+EOF
+
+flags=()
+# Off unless the cluster config asks for it (self-signed proxy certificate).
+[ "${TELEPORT_INSECURE_SKIP_PROXY_TLS_VERIFY:-false}" = true ] && flags+=(--insecure)
+exec teleport start --config="$CONFIG_FILE" "${flags[@]}"

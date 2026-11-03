@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# Toolbox start-up (runs as root under tini): prepare runtime state, then run
+# sshd in the foreground. It never edits dotfiles; shell config lives in /etc.
+#
+# Volumes it expects (see README.md):
+#   /home/kieeps          persistent home
+#   /var/lib/toolbox      persistent system state (SSH host keys, Teleport identity)
+#   /nix                  persistent Nix store
+#   /run/toolbox/config   ConfigMap, one file per variable
+#   /run/toolbox/secrets  Secret, one file per variable
+#   /host-share, /host-nixos  optional host folders
+set -euo pipefail
+
+USER_NAME=kieeps
+HOME_DIR=/home/kieeps
+STATE_DIR=/var/lib/toolbox
+RUN_DIR=/run/toolbox
+
+. /etc/profile.d/toolbox-env.sh
+
+# Fresh volumes are created root-owned; fix the top level only (never recurse
+# through the home volume).
+install -d -o "$USER_NAME" -g "$USER_NAME" "$HOME_DIR" /nix /workspace
+install -d -m 0700 "$STATE_DIR/ssh"
+install -d -m 0755 "$RUN_DIR" /run/sshd
+# An empty ~/.zshrc stops zsh's first-run wizard; personal config goes there.
+[ -e "$HOME_DIR/.zshrc" ] || install -o "$USER_NAME" -g "$USER_NAME" -m 0644 /dev/null "$HOME_DIR/.zshrc"
+
+# SSH host keys persist so the fingerprint survives restarts and image updates.
+for type in ed25519 rsa; do
+  key="$STATE_DIR/ssh/ssh_host_${type}_key"
+  [ -f "$key" ] || ssh-keygen -q -t "$type" -N "" -f "$key"
+done
+
+# authorized_keys: the keys declared for the user in the NixOS repo, plus any
+# extras in /host-share/authorized_keys. Rebuilt on every start.
+{
+  if [ -f /host-nixos/users/kieeps.nix ]; then
+    awk '/openssh\.authorizedKeys\.keys = \[/ { k=1; next }
+         k && /\];/ { k=0 }
+         k && match($0, /"[^"]+"/) { print substr($0, RSTART + 1, RLENGTH - 2) }' /host-nixos/users/kieeps.nix
+  fi
+  if [ -f /host-share/authorized_keys ]; then
+    cat /host-share/authorized_keys
+  fi
+} | awk 'NF && !/^#/ && !seen[$0]++' >"$RUN_DIR/authorized_keys"
+chmod 0644 "$RUN_DIR/authorized_keys"
+
+toolbox-mcp-sync "$USER_NAME" || echo "toolbox-entrypoint: MCP config sync failed; continuing" >&2
+
+if [ -n "${TELEPORT_PROXY_SERVER:-}" ]; then
+  toolbox-teleport &
+fi
+
+exec /usr/sbin/sshd -D -e

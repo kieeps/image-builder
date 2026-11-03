@@ -1,0 +1,3 @@
+# Read by every zsh, interactive or not, so MCP servers and scripts started
+# over SSH get the same environment as an interactive shell.
+[ -r /etc/profile.d/toolbox-env.sh ] && emulate sh -c '. /etc/profile.d/toolbox-env.sh'
