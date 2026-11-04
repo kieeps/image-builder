@@ -11,7 +11,7 @@ MCP servers they use. Ubuntu `rolling`; everything is the latest at build time.
 | Packages and tools | `Dockerfile` |
 | Shell, tmux, sshd, Nix config | `rootfs/etc/` |
 | Environment variables | the cluster only: ConfigMap `toolbox-config` + Secret `toolbox-secrets`, mounted as files and loaded by `rootfs/etc/profile.d/toolbox-env.sh` in every shell |
-| MCP servers (Claude + Codex) | `rootfs/etc/toolbox/mcp-servers.json`, applied by `toolbox-mcp-sync` at start |
+| MCP servers (Claude + Codex) | `rootfs/etc/toolbox/mcp-servers.json`, applied by `toolbox-mcp-sync` at start; the ones that need cluster credentials point at the [mcp-gateway](../mcp-gateway) |
 | Kubernetes access | the pod's ServiceAccount, via `rootfs/etc/toolbox/kubeconfig` |
 | Personal shell tweaks | `~/.zshrc` in the persistent home (never touched by the image) |
 

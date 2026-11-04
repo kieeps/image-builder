@@ -6,6 +6,13 @@ Container images for the obelix cluster. One folder per image:
 images/<name>/Dockerfile   →   ghcr.io/kieeps/<name>:latest   (+ :sha-<commit>)
 ```
 
+## Images
+
+| Image | What |
+|---|---|
+| [toolbox](images/toolbox) | SSH/tmux dev box with Claude Code, Codex, kubectl, Nix |
+| [mcp-gateway](images/mcp-gateway) | MCP servers that need cluster credentials, over HTTP for the toolbox and Odysseus |
+
 ## Conventions
 
 - **One folder = one image.** The folder is the build context, and the image is named after it.

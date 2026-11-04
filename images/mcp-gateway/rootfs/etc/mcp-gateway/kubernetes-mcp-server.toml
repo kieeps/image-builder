@@ -1,0 +1,2 @@
+# In-cluster credentials of the gateway's ServiceAccount (bound to "view").
+read_only = true

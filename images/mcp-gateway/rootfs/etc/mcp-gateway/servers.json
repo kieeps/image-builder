@@ -1,0 +1,38 @@
+{
+  "_comment": "MCP servers served by the gateway at /servers/<name>/mcp. `env` lists the variable NAMES each server gets; the values come from the files in /run/mcp-gateway/{config,secrets} (ConfigMap mcp-gateway-config, Secret mcp-gateway-secrets), or from the pod environment. A server only sees its own variables.",
+  "servers": {
+    "kubernetes": {
+      "command": "kubernetes-mcp-server",
+      "args": ["--config", "/etc/mcp-gateway/kubernetes-mcp-server.toml"],
+      "env": ["KUBERNETES_SERVICE_HOST", "KUBERNETES_SERVICE_PORT"]
+    },
+    "grafana": {
+      "command": "mcp-grafana",
+      "args": ["--disable-write"],
+      "env": ["GRAFANA_URL", "GRAFANA_USERNAME", "GRAFANA_PASSWORD"]
+    },
+    "homeassistant": {
+      "command": "ha-mcp",
+      "env": ["HOMEASSISTANT_URL", "HOMEASSISTANT_TOKEN"]
+    },
+    "nextcloud": {
+      "command": "nextcloud-mcp-server",
+      "args": ["run", "--transport", "stdio"],
+      "env": ["NEXTCLOUD_HOST", "NEXTCLOUD_USERNAME", "NEXTCLOUD_PASSWORD"]
+    },
+    "unifi": {
+      "command": "unifi-network-mcp",
+      "env": [
+        "UNIFI_HOST", "UNIFI_PORT", "UNIFI_USERNAME", "UNIFI_PASSWORD", "UNIFI_API_KEY",
+        "UNIFI_SITE", "UNIFI_VERIFY_SSL", "UNIFI_CONTROLLER_TYPE",
+        "UNIFI_NETWORK_HOST", "UNIFI_NETWORK_PORT", "UNIFI_NETWORK_USERNAME",
+        "UNIFI_NETWORK_PASSWORD", "UNIFI_NETWORK_SITE", "UNIFI_NETWORK_VERIFY_SSL"
+      ]
+    },
+    "firefly-iii": {
+      "command": "firefly-iii-mcp",
+      "args": ["--preset", "default"],
+      "env": ["FIREFLY_III_BASE_URL", "FIREFLY_III_PAT"]
+    }
+  }
+}

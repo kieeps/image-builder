@@ -54,8 +54,15 @@ RUN curl -fsSL -o /usr/local/bin/kubectl \
        | tar -xz -C /usr/local/bin k9s \
   && curl -fsSL https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin UV_NO_MODIFY_PATH=1 sh
 
-# Agent CLIs and the MCP servers that run as local binaries. The rest of the MCP
-# servers run via uvx/npx on demand (see rootfs/etc/toolbox/mcp-servers.json).
+# Local MCP servers (they work on files in this box). The ones that need cluster
+# credentials run in the mcp-gateway image instead.
+RUN export UV_TOOL_DIR=/opt/uv/tools UV_TOOL_BIN_DIR=/usr/local/bin \
+      UV_PYTHON_INSTALL_DIR=/opt/uv/python UV_NO_CACHE=1 \
+  && uv tool install jcodemunch-mcp \
+  && uv tool install jdocmunch-mcp \
+  && uv tool install jdatamunch-mcp
+
+# Agent CLIs and the filesystem MCP server.
 RUN npm install -g --no-fund --no-audit \
       @anthropic-ai/claude-code \
       @openai/codex \

@@ -1,3 +1,0 @@
-# kubernetes-mcp-server >= 0.0.69 takes no CLI flags; settings live here.
-read_only = true
-cluster_provider_strategy = "disabled"

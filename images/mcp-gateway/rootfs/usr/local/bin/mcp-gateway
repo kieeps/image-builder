@@ -1,0 +1,62 @@
+#!/usr/bin/env python3
+"""Start mcp-proxy with the servers from /etc/mcp-gateway/servers.json.
+
+Each server gets only the variables it lists under `env`, read from the files
+in /run/mcp-gateway/{config,secrets} (or, failing that, from the pod's own
+environment, e.g. KUBERNETES_SERVICE_HOST). The rendered mcp-proxy config holds those
+values, so it is written to a private temp file and never to the image.
+"""
+import json
+import os
+import sys
+import tempfile
+from pathlib import Path
+
+SERVERS = Path("/etc/mcp-gateway/servers.json")
+VALUE_DIRS = [Path("/run/mcp-gateway/config"), Path("/run/mcp-gateway/secrets")]
+PORT = os.environ.get("MCP_GATEWAY_PORT", "8080")
+# Host headers mcp-proxy accepts (DNS-rebinding protection).
+ALLOWED_HOSTS = os.environ.get(
+    "MCP_GATEWAY_ALLOWED_HOSTS",
+    "mcp-gateway.util.svc.cluster.local,mcp-gateway.util.svc,mcp-gateway.util,mcp-gateway",
+).split(",")
+
+
+def load_values():
+    values = dict(os.environ)
+    for d in VALUE_DIRS:
+        if not d.is_dir():
+            continue
+        for f in sorted(d.iterdir()):
+            # ConfigMap/Secret volumes also contain ..data symlinks; skip them.
+            if f.name.startswith(".") or not f.is_file():
+                continue
+            values[f.name] = f.read_text().rstrip("\n")
+    return values
+
+
+def main():
+    values = load_values()
+    servers = {}
+    for name, spec in json.loads(SERVERS.read_text())["servers"].items():
+        missing = [k for k in spec.get("env", []) if k not in values]
+        if missing:
+            print(f"mcp-gateway: {name}: missing {', '.join(missing)}", file=sys.stderr)
+        servers[name] = {
+            "command": spec["command"],
+            "args": spec.get("args", []),
+            "env": {k: values[k] for k in spec.get("env", []) if k in values},
+        }
+
+    fd, path = tempfile.mkstemp(prefix="mcp-proxy-", suffix=".json")
+    with os.fdopen(fd, "w") as f:
+        json.dump({"mcpServers": servers}, f)
+
+    args = ["mcp-proxy", "--named-server-config", path, "--host", "0.0.0.0", "--port", PORT]
+    for host in ALLOWED_HOSTS:
+        args += ["--allowed-host", f"{host}:{PORT}", "--allowed-host", host]
+    os.execvp(args[0], args)
+
+
+if __name__ == "__main__":
+    main()
