@@ -19,8 +19,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   && ln -s /usr/bin/fdfind /usr/local/bin/fd \
   && rm -rf /var/lib/apt/lists/*
 
-# Third-party apt repos: Node.js (NodeSource "current" line), GitHub CLI, Teleport.
-# Teleport publishes LTS codenames only, so it uses the noble repo.
+# Third-party apt repos: Node.js (NodeSource "current" line), GitHub CLI,
+# Tailscale, Teleport. Teleport publishes LTS codenames only, so it uses the
+# noble repo; Tailscale follows the image's own codename.
 RUN install -d -m 0755 /etc/apt/keyrings \
   && node_line=$(curl -fsSL https://deb.nodesource.com/setup_current.x | sed -n 's/^NODE_VERSION="\(.*\)"$/\1/p') \
   && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
@@ -31,11 +32,16 @@ RUN install -d -m 0755 /etc/apt/keyrings \
        -o /etc/apt/keyrings/githubcli.gpg \
   && echo "deb [signed-by=/etc/apt/keyrings/githubcli.gpg] https://cli.github.com/packages stable main" \
        > /etc/apt/sources.list.d/github-cli.list \
+  && . /etc/os-release \
+  && curl -fsSL "https://pkgs.tailscale.com/stable/ubuntu/${VERSION_CODENAME}.noarmor.gpg" \
+       -o /etc/apt/keyrings/tailscale.gpg \
+  && echo "deb [signed-by=/etc/apt/keyrings/tailscale.gpg] https://pkgs.tailscale.com/stable/ubuntu ${VERSION_CODENAME} main" \
+       > /etc/apt/sources.list.d/tailscale.list \
   && curl -fsSL https://apt.releases.teleport.dev/gpg -o /etc/apt/keyrings/teleport.asc \
   && echo "deb [signed-by=/etc/apt/keyrings/teleport.asc] https://apt.releases.teleport.dev/ubuntu noble stable/v${TELEPORT_MAJOR}" \
        > /etc/apt/sources.list.d/teleport.list \
   && apt-get update \
-  && apt-get install -y --no-install-recommends nodejs gh teleport \
+  && apt-get install -y --no-install-recommends nodejs gh tailscale teleport \
   && rm -rf /var/lib/apt/lists/*
 
 # Kubernetes tooling and uv, straight from upstream releases.

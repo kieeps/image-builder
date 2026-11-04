@@ -4,7 +4,7 @@
 #
 # Volumes it expects (see README.md):
 #   /home/kieeps          persistent home
-#   /var/lib/toolbox      persistent system state (SSH host keys, Teleport identity)
+#   /var/lib/toolbox      persistent system state (SSH host keys, Tailscale/Teleport identity)
 #   /nix                  persistent Nix store
 #   /run/toolbox/config   ConfigMap, one file per variable
 #   /run/toolbox/secrets  Secret, one file per variable
@@ -51,6 +51,9 @@ chmod 0644 "$RUN_DIR/authorized_keys"
 
 toolbox-mcp-sync "$USER_NAME" || echo "toolbox-entrypoint: MCP config sync failed; continuing" >&2
 
+if [ -e "$RUN_DIR/tailscale/auth-key" ] || [ -e "$STATE_DIR/tailscale/tailscaled.state" ]; then
+  toolbox-tailscale &
+fi
 if [ -n "${TELEPORT_PROXY_SERVER:-}" ]; then
   toolbox-teleport &
 fi

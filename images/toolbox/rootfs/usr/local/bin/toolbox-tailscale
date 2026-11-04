@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# Join the toolbox to the tailnet. Started by toolbox-entrypoint when an auth key
+# is mounted or an earlier identity exists. The key is only needed for the very
+# first login; after that the node state in /var/lib/toolbox/tailscale is reused.
+set -euo pipefail
+
+STATE_DIR=/var/lib/toolbox/tailscale
+KEY_FILE=/run/toolbox/tailscale/auth-key
+SOCKET=/run/tailscale/tailscaled.sock
+
+mkdir -p "$STATE_DIR" "$(dirname "$SOCKET")"
+if [ ! -s "$KEY_FILE" ] && [ ! -s "$STATE_DIR/tailscaled.state" ]; then
+  echo "toolbox-tailscale: no auth key at $KEY_FILE and no existing identity in $STATE_DIR" >&2
+  exit 1
+fi
+
+# Kernel networking when the pod gets /dev/net/tun (and NET_ADMIN), so tailnet
+# hosts are reachable from the shell; otherwise userspace networking, which
+# only serves inbound connections.
+tun=userspace-networking
+[ -c /dev/net/tun ] && tun=tailscale0
+
+tailscaled --statedir="$STATE_DIR" --socket="$SOCKET" --tun="$tun" &
+daemon=$!
+for _ in $(seq 30); do [ -S "$SOCKET" ] && break; sleep 1; done
+
+# --reset makes these flags the whole configuration. DNS stays with the
+# cluster: MagicDNS would replace /etc/resolv.conf and break *.svc names.
+up=(--reset --hostname="${TAILSCALE_HOSTNAME:-$HOSTNAME}" --operator=kieeps --accept-dns=false)
+[ -s "$KEY_FILE" ] && up+=(--auth-key="file:$KEY_FILE")
+tailscale --socket="$SOCKET" up "${up[@]}"
+
+wait "$daemon"
