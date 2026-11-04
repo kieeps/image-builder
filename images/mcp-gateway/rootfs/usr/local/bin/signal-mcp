@@ -1,0 +1,90 @@
+#!/usr/bin/env python3
+"""Minimal stdio MCP server with one tool: send the owner a Signal message.
+
+It posts to signal-webhook-relay (SIGNAL_RELAY_URL), which delivers to a fixed
+recipient: the owner's own number. There is deliberately no recipient argument.
+Standard library only; speaks newline-delimited JSON-RPC as MCP stdio requires.
+"""
+import json
+import os
+import sys
+import urllib.error
+import urllib.request
+
+RELAY_URL = os.environ.get("SIGNAL_RELAY_URL", "http://signal-webhook-relay.util.svc:8080/notify")
+
+TOOL = {
+    "name": "send_signal_message",
+    "description": (
+        "Send a Signal message to the owner's own phone (a notification to themselves). "
+        "The recipient is fixed; this cannot message anyone else."
+    ),
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "title": {"type": "string", "description": "Short headline, one line."},
+            "message": {"type": "string", "description": "Optional details; plain text, newlines allowed."},
+        },
+        "required": ["title"],
+    },
+    "annotations": {"title": "Send Signal message", "readOnlyHint": False,
+                    "destructiveHint": False, "openWorldHint": True},
+}
+
+
+def send(title, message):
+    body = json.dumps({"title": title, "message": message}).encode()
+    req = urllib.request.Request(RELAY_URL, data=body, method="POST",
+                                 headers={"Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=15) as r:
+            return f"Queued for delivery to the owner's Signal (relay status {r.status})."
+    except urllib.error.HTTPError as e:
+        raise RuntimeError(f"relay returned {e.code}: {e.read().decode(errors='replace')[:200]}")
+
+
+def handle(req):
+    method, params = req.get("method"), req.get("params") or {}
+    if method == "initialize":
+        return {"protocolVersion": params.get("protocolVersion", "2025-06-18"),
+                "capabilities": {"tools": {}},
+                "serverInfo": {"name": "signal", "version": "1.0.0"}}
+    if method == "ping":
+        return {}
+    if method == "tools/list":
+        return {"tools": [TOOL]}
+    if method == "tools/call":
+        if params.get("name") != TOOL["name"]:
+            raise LookupError(f"unknown tool {params.get('name')!r}")
+        args = params.get("arguments") or {}
+        title = str(args.get("title") or "").strip()
+        if not title:
+            return {"content": [{"type": "text", "text": "title is required"}], "isError": True}
+        try:
+            text = send(title, str(args.get("message") or "").strip())
+            return {"content": [{"type": "text", "text": text}]}
+        except Exception as e:
+            return {"content": [{"type": "text", "text": f"Signal delivery failed: {e}"}], "isError": True}
+    raise LookupError(f"method not found: {method}")
+
+
+def main():
+    for line in sys.stdin:
+        if not line.strip():
+            continue
+        try:
+            req = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if "id" not in req:  # notification (e.g. notifications/initialized)
+            continue
+        try:
+            resp = {"jsonrpc": "2.0", "id": req["id"], "result": handle(req)}
+        except LookupError as e:
+            resp = {"jsonrpc": "2.0", "id": req["id"], "error": {"code": -32601, "message": str(e)}}
+        sys.stdout.write(json.dumps(resp) + "\n")
+        sys.stdout.flush()
+
+
+if __name__ == "__main__":
+    main()

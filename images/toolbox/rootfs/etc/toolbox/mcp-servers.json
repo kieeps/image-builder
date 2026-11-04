@@ -28,6 +28,9 @@
     "firefly-iii": {
       "url": "http://mcp-gateway.util.svc.cluster.local:8080/servers/firefly-iii/mcp"
     },
+    "signal": {
+      "url": "http://mcp-gateway.util.svc.cluster.local:8080/servers/signal/mcp"
+    },
     "jcodemunch": {
       "command": "jcodemunch-mcp"
     },

@@ -13,6 +13,7 @@ only here. Every server is the latest release at build time.
 | `/servers/nextcloud/mcp` | nextcloud-mcp-server |
 | `/servers/unifi/mcp` | unifi-network-mcp |
 | `/servers/firefly-iii/mcp` | @firefly-iii-mcp/local |
+| `/servers/signal/mcp` | `signal-mcp` (in this image): `send_signal_message`, to the owner's own number only, via signal-webhook-relay |
 
 `/status` lists the servers and their state. Every path also has an SSE variant
 (`/servers/<name>/sse`).

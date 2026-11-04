@@ -33,6 +33,10 @@
       "command": "firefly-iii-mcp",
       "args": ["--preset", "default"],
       "env": ["FIREFLY_III_BASE_URL", "FIREFLY_III_PAT"]
+    },
+    "signal": {
+      "command": "signal-mcp",
+      "env": ["SIGNAL_RELAY_URL"]
     }
   }
 }

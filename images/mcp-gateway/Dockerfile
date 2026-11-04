@@ -24,7 +24,7 @@ RUN npm install -g --no-fund --no-audit kubernetes-mcp-server @firefly-iii-mcp/l
   && npm cache clean --force
 
 COPY rootfs/ /
-RUN chmod 0755 /usr/local/bin/mcp-gateway
+RUN chmod 0755 /usr/local/bin/mcp-gateway /usr/local/bin/signal-mcp
 
 # The node image's uid 1000 user; no root at runtime.
 USER node
