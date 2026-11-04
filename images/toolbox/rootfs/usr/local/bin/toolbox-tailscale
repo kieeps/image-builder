@@ -26,7 +26,8 @@ for _ in $(seq 30); do [ -S "$SOCKET" ] && break; sleep 1; done
 
 # --reset makes these flags the whole configuration. DNS stays with the
 # cluster: MagicDNS would replace /etc/resolv.conf and break *.svc names.
-up=(--reset --hostname="${TAILSCALE_HOSTNAME:-$HOSTNAME}" --operator=kieeps --accept-dns=false)
+# Tailscale SSH stays off: port 22 on the tailnet IP is the regular sshd.
+up=(--reset --hostname="${TAILSCALE_HOSTNAME:-$HOSTNAME}" --operator=kieeps --accept-dns=false --ssh=false)
 [ -s "$KEY_FILE" ] && up+=(--auth-key="file:$KEY_FILE")
 tailscale --socket="$SOCKET" up "${up[@]}"
 
