@@ -20,7 +20,10 @@ RUN_DIR=/run/toolbox
 
 # Fresh volumes are created root-owned; fix the top level only (never recurse
 # through the home volume).
-install -d -o "$USER_NAME" -g "$USER_NAME" "$HOME_DIR" /nix /workspace
+install -d -o "$USER_NAME" -g "$USER_NAME" "$HOME_DIR" /nix /nix/store /nix/var /workspace
+# The kubelet creates parents of the skills mounts (~/.claude/skills,
+# ~/.codex/skills) as root; hand them back to the user.
+install -d -o "$USER_NAME" -g "$USER_NAME" "$HOME_DIR/.claude" "$HOME_DIR/.codex"
 install -d -m 0700 "$STATE_DIR/ssh"
 install -d -m 0755 "$RUN_DIR" /run/sshd
 # An empty ~/.zshrc stops zsh's first-run wizard; personal config goes there.
