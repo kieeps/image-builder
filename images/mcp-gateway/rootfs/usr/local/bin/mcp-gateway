@@ -52,7 +52,10 @@ def main():
     with os.fdopen(fd, "w") as f:
         json.dump({"mcpServers": servers}, f)
 
-    args = ["mcp-proxy", "--named-server-config", path, "--host", "0.0.0.0", "--port", PORT]
+    # Stateless: no MCP sessions to lose, so clients holding a session id from
+    # before a gateway restart (Odysseus does not re-initialize on 404) keep
+    # working. The stdio servers behind it are still one long-lived process each.
+    args = ["mcp-proxy", "--stateless", "--named-server-config", path, "--host", "0.0.0.0", "--port", PORT]
     for host in ALLOWED_HOSTS:
         args += ["--allowed-host", f"{host}:{PORT}", "--allowed-host", host]
     os.execvp(args[0], args)
