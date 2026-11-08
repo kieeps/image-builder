@@ -10,13 +10,15 @@ ENV DEBIAN_FRONTEND=noninteractive \
 # so this is the one deliberate version choice in the image.
 ARG TELEPORT_MAJOR=18
 
+# locale-gen: UTF-8 locales SSH clients commonly ask for (C.UTF-8 is built in).
 RUN apt-get update && apt-get install -y --no-install-recommends \
       bash bubblewrap btop ca-certificates curl dnsutils fd-find file fzf gettext-base \
-      git gnupg htop iproute2 iputils-ping jq less lsof nano ncurses-term \
+      git gnupg htop iproute2 iputils-ping jq less locales lsof nano ncurses-term \
       netcat-openbsd nix-bin openssh-client openssh-server procps python3 python3-pip \
       python3-tomlkit python3-venv ripgrep rsync strace sudo tar tini tmux tree unzip vim \
       wget xz-utils yq zsh zsh-autosuggestions zsh-syntax-highlighting \
   && ln -s /usr/bin/fdfind /usr/local/bin/fd \
+  && sed -i -E 's/^# *((en_US|en_GB|sv_SE)\.UTF-8 UTF-8)/\1/' /etc/locale.gen && locale-gen \
   && rm -rf /var/lib/apt/lists/*
 
 # Third-party apt repos: Node.js (NodeSource "current" line), GitHub CLI,

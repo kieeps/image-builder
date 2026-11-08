@@ -21,9 +21,11 @@ unset _toolbox_f _toolbox_n
 # Image defaults (overridable by the ConfigMap above).
 : "${KUBECONFIG:=/etc/toolbox/kubeconfig}"
 : "${EDITOR:=vim}"
+# sshd starts sessions with a clean environment, so the image's LANG is lost.
+: "${LANG:=C.UTF-8}"
 # Claude Code and Codex are updated by the weekly image rebuild.
 : "${DISABLE_AUTOUPDATER:=1}"
-export KUBECONFIG EDITOR DISABLE_AUTOUPDATER
+export KUBECONFIG EDITOR LANG DISABLE_AUTOUPDATER
 
 case ":$PATH:" in
   *":$HOME/.local/bin:"*) ;;
